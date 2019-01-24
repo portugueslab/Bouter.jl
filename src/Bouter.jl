@@ -39,8 +39,8 @@ function Experiment(path::String)
 end
 
 function load_exp_df(s::String)
-    if endswith(s, ".h5")
-        return DeepDish.load_deepdish(s)
+    if endswith(s, ".h5") || endswith(s, ".hdf5")
+        return DeepDish.load_deepdish(s)["data"]
     elseif endswith(s, ".feather")
         return Feather.read(s)
     elseif endswith(s, ".csv")
@@ -49,13 +49,30 @@ function load_exp_df(s::String)
 end
 
 function Base.getproperty(e::Experiment, v::Symbol)
-    if v in (:behavior_log, :estimator_log, :stimulus_log)
-            bl = getfield(e, v)
-            if bl == nothing
-                if isa(e.metadata["tracking"][string(v)], String)
-                    setfield!(e, v, load_exp_df(e.metadata["tracking"][string(v)]))
+    if v == :behavior_log || v == :estimator_log
+        bl = getfield(e, v)
+        if bl == nothing
+            if isa(e.metadata["tracking"][string(v)], String)
+                setfield!(e, v, load_exp_df(joinpath(e.path,e.metadata["tracking"][string(v)])))
+            end
+        end
+    elseif v == :stimulus_log
+        bl = getfield(e, v)
+        if bl == nothing
+            if isa(e.metadata["stimulus"][string(v)], String)
+                path_stim_file = joinpath(e.path,e.metadata["stimulus"][string(v)])
+                if isfile(path_stim_file)
+                    setfield!(e, v, load_exp_df(path_stim_file))
+                else
+                    filebase = joinpath(e.path, e.session_id * "_stimulus_log.")
+                    if isfile(filebase*"h5")
+                        setfield!(e, v, load_exp_df(filebase*"h5"))
+                    elseif isfile(filebase*"hdf5")
+                        setfield!(e, v, load_exp_df(filebase*"hdf5"))
+                    end
                 end
             end
+        end
     end
     return getfield(e, v)
 end
