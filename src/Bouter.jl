@@ -5,7 +5,9 @@ import DeepDish
 import Feather
 import CSV
 using DataFrames
-
+using LinearAlgebra
+using DataFrames
+using Formatting
 
 mutable struct ImagingData
     dataArray::AbstractArray
@@ -59,17 +61,20 @@ function Base.getproperty(e::Experiment, v::Symbol)
     elseif v == :stimulus_log
         bl = getfield(e, v)
         if bl == nothing
-            if isa(e.metadata["stimulus"][string(v)], String)
-                path_stim_file = joinpath(e.path,e.metadata["stimulus"][string(v)])
-                if isfile(path_stim_file)
-                    setfield!(e, v, load_exp_df(path_stim_file))
-                else
-                    filebase = joinpath(e.path, e.session_id * "_stimulus_log.")
-                    if isfile(filebase*"h5")
-                        setfield!(e, v, load_exp_df(filebase*"h5"))
-                    elseif isfile(filebase*"hdf5")
-                        setfield!(e, v, load_exp_df(filebase*"hdf5"))
-                    end
+            if haskey(e.metadata["stimulus"], string(v)) &&
+                isa(e.metadata["stimulus"][string(v)], String) &&
+                isfile(joinpath(e.path,e.metadata["stimulus"][string(v)]))
+
+                    setfield!(e, v, load_exp_df(
+                        joinpath(e.path,e.metadata["stimulus"][string(v)]))
+                    )
+
+            else
+                filebase = joinpath(e.path, e.session_id * "_stimulus_log.")
+                if isfile(filebase*"h5")
+                    setfield!(e, v, load_exp_df(filebase*"h5"))
+                elseif isfile(filebase*"hdf5")
+                    setfield!(e, v, load_exp_df(filebase*"hdf5"))
                 end
             end
         end
@@ -77,5 +82,7 @@ function Base.getproperty(e::Experiment, v::Symbol)
     return getfield(e, v)
 end
 
+include("segmentation.jl")
+include("free/preparation.jl")
 
 end # module
