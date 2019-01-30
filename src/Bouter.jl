@@ -9,6 +9,8 @@ using LinearAlgebra
 using DataFrames
 using Formatting
 
+export Experiment
+
 mutable struct ImagingData
     dataArray::AbstractArray
     framerate::Float64
@@ -82,6 +84,7 @@ function Base.getproperty(e::Experiment, v::Symbol)
     return getfield(e, v)
 end
 
+include("utilities.jl")
 include("segmentation.jl")
 include("free/preparation.jl")
 
