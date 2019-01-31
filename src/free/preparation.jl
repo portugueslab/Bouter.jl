@@ -5,7 +5,7 @@ using Printf
 function get_scale_mm(exp::Experiment)
     cal_params = exp.metadata["stimulus"]["calibration_params"]
     proj_mat = hcat(cal_params["cam_to_proj"]...)
-    return norm(proj_mat[:, 1:2] * [1.0, 0.0]) * cal_params["mm_px"]
+    return norm(proj_mat[1:2, :] * [1.0, 0.0]) * cal_params["mm_px"]
 end
 
 function extract_n_segments(df::DataFrame)
@@ -44,7 +44,7 @@ end
 function _extract_bout(df, s, e, n_segments, i_fish=0, scale=1.0)
     bout = _rename_fish(df[s:e, :], i_fish, n_segments)
     # scale to physical coordinates
-    dt = (bout.t[end] - bout.t[end]) / size(bout, 1)
+    dt = (bout.t[end] - bout.t[1]) / size(bout, 1)
     for sym in [:x, :vx, :y, :vy]
         bout[sym] .*= scale
     end
@@ -52,6 +52,14 @@ function _extract_bout(df, s, e, n_segments, i_fish=0, scale=1.0)
         bout[sym] ./= dt
     end
     return bout
+end
+
+function median_missing(a)
+    if isempty(a)
+       return missing
+   else 
+       return median(a)
+   end
 end
 
 "Extracts bouts from a freely-swimming fish experiment"
@@ -81,7 +89,8 @@ function extract_bouts(
         vel = interpolate_missing(
                 df[Symbol("f", i_fish, "_vx")] .^ 2 .+
                 df[Symbol("f", i_fish, "_vy")] .^ 2, max_interpolate)
-        vel = mapwindow(median, vel, window_size)
+        med_vel = similar(vel)
+        vel = mapwindow!(median_missing ∘ skipmissing, med_vel, vel, window_size)
         bout_locations, continuity = extract_segments_above_thresh(vel, kwargs...)
         all_bouts_fish = [
             _extract_bout(df, s, e, n_segments, i_fish, scale)

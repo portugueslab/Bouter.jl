@@ -27,11 +27,11 @@ function extract_segments_above_thresh(
                 in_bout = false
             end
 
-        elseif i > bout_ended && vel[i - 1] < threshold < vel[i] && !in_bout
+        elseif !ismissing(vel[i-1]) && i > bout_ended && vel[i - 1] < threshold < vel[i] && !in_bout
             in_bout = true
             start = i - pad_before
 
-        elseif vel[i - 1] > threshold > vel[i] && in_bout
+        elseif !ismissing(vel[i-1]) && vel[i - 1] > threshold > vel[i] && in_bout
             in_bout = false
             if i - start > min_duration
                 push!(bouts, (start, i + pad_after))

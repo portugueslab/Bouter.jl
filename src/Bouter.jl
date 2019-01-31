@@ -87,5 +87,6 @@ end
 include("utilities.jl")
 include("segmentation.jl")
 include("free/preparation.jl")
+include("free/background_motion.jl")
 
 end # module
