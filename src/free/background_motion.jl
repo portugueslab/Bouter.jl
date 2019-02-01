@@ -9,17 +9,17 @@ end
 struct MovingBackground
     images :: AbstractArray{AbstractArray}
     image_labels :: AbstractArray
-    stim_ends :: AbstractArray
+    stim_ends :: Array{Float64, 1}
     movement :: Movement
     mm_px
     center_relative :: Bool
-    shifts :: Union{Nothing, AbstractArray}
+    shifts :: Union{Nothing, Array{NTuple{2, Float64}, 1}}
     display_size :: AbstractArray
-    proj_mat :: AbstractArray{Float64, 2}
+    proj_mat :: Array{Float64, 2}
 end
 
-function get_position(m::Movement, t)
-    return m.x[t], m.y[t]
+function get_position(m::Movement, t) :: Tuple{Float64, Float64}
+    return m.x(t), m.y(t)
 end
 
 function Movement(df::DataFrame)
@@ -29,8 +29,8 @@ function Movement(df::DataFrame)
     )
 end
 
-function MovingBackground(exp::Experiment; asset_dir=raw"J:/_Shared/stytra_resources")
-    stim_log = exp.metadata["stimulus"]["log"]
+function MovingBackground(cexp::Experiment; asset_dir=raw"J:/_Shared/stytra_resources")
+    stim_log = cexp.metadata["stimulus"]["log"]
     
     if occursin(".h5", stim_log[1]["background_name"])
         bgimslist = DeepDish.load_deepdish(
@@ -56,16 +56,16 @@ function MovingBackground(exp::Experiment; asset_dir=raw"J:/_Shared/stytra_resou
     end
 
     center_relative = stim_log[1]["centre_relative"]
-    display_size = exp.metadata["stimulus"]["display_params"]["size"]
+    display_size = cexp.metadata["stimulus"]["display_params"]["size"]
 
     if center_relative
-        shifts = Array{Float64}(undef, (2, length(images)))
+        shifts = Array{NTuple{2, Float64}}(undef, length(images))
         for i_stim in 1:length(images)
             imh, imw = size(images[i_stim])[1:2]
             h, w = display_size
             display_centre = (w / 2, h / 2)
             image_centre = (imw / 2, imh / 2)
-            shifts[:, i_stim] .= display_centre .- image_centre
+            shifts[i_stim] = display_centre .- image_centre
        
         end
     else
@@ -74,14 +74,14 @@ function MovingBackground(exp::Experiment; asset_dir=raw"J:/_Shared/stytra_resou
 
     stim_ends = [stim["t_stop"] for stim in stim_log]
 
-    cal_params = exp.metadata["stimulus"]["calibration_params"]
+    cal_params = cexp.metadata["stimulus"]["calibration_params"]
     proj_mat = vcat(transpose.(cal_params["proj_to_cam"])...)
 
     return MovingBackground(images,
                             image_labels,
                             stim_ends,
-                            Movement(exp.stimulus_log),
-                            exp.metadata["stimulus"]["calibration_params"]["mm_px"],
+                            Movement(cexp.stimulus_log),
+                            cexp.metadata["stimulus"]["calibration_params"]["mm_px"],
                             center_relative,
                             shifts,
                             display_size,
@@ -97,7 +97,8 @@ end
 function get_position(bg::MovingBackground, t)
     x, y =  get_position(bg.movement, t)
     if bg.center_relative
-        x, y = bg.shifts[:, _get_i_stim(bg, t)] .+ (x, -y)
+        bg.shifts :: Array{NTuple{2, Float64}, 1}
+        x, y = bg.shifts[_get_i_stim(bg, t)::Int64]::NTuple{2, Float64} .+ (x, -y)
     end
     return (x, y)
 end
@@ -106,7 +107,7 @@ function get_position_camera(bg::MovingBackground, t)
     return bg.proj_mat * [get_position(bg, t)... ; 1]
 end
 
-function motion_direction_velocity(bg:: MovingBackground, t; dt_vel=0.1)
+function motion_direction_velocity(bg:: MovingBackground, t; dt_vel=0.1)::Tuple{Union{Nothing, Float64}, Union{Nothing, Float64}}
     p0, p1 = map(ti->get_position_camera(bg, ti), [t-dt_vel, t+dt_vel])
     dp = (p0 .- p1)/dt_vel
     if all(dp .== 0)

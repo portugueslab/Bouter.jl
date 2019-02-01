@@ -24,7 +24,17 @@ function interpolate_missing(A::AbstractArray, max_interpolate)
     end
     return B
 end
+using StaticArrays
 
+"Correct mean of an array of angles"
+function angle_mean(a::AbstractArray)
+    return atan(sum(sin.(a)), sum(cos.(a)))
+end
+
+"Rotation matrix for an angle"
+function rot_mat(θ)
+    SMatrix{2, 2}(cos(θ), sin(θ), -sin(θ), cos(θ))
+end
 
 "Bridge missing values by interpolation"
 function interpolate_nans(A::AbstractArray, max_interpolate)

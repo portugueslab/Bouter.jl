@@ -4,8 +4,8 @@ using Printf
 
 function get_scale_mm(exp::Experiment)
     cal_params = exp.metadata["stimulus"]["calibration_params"]
-    proj_mat = hcat(cal_params["cam_to_proj"]...)
-    return norm(proj_mat[1:2, :] * [1.0, 0.0]) * cal_params["mm_px"]
+    proj_mat = vcat(transpose.(cal_params["cam_to_proj"])...)
+    return norm(proj_mat[:, 1:2] * [1.0, 0.0]) * cal_params["mm_px"]
 end
 
 function extract_n_segments(df::DataFrame)
@@ -64,15 +64,15 @@ end
 
 "Extracts bouts from a freely-swimming fish experiment"
 function extract_bouts(
-    exp::Experiment;
+    cexp::Experiment;
     max_interpolate=2,
     window_size=7,
     recalculate_vel=false,
     scale=nothing, kwargs...)
 
-    df = exp.behavior_log
+    df = cexp.behavior_log
 
-    scale = scale == nothing ? get_scale_mm(exp) : scale
+    scale = scale == nothing ? get_scale_mm(cexp) : scale
 
     n_fish = extract_n_fish(df)
     n_segments = extract_n_segments(df)
