@@ -56,8 +56,14 @@ function Base.getproperty(e::Experiment, v::Symbol)
     if v == :behavior_log || v == :estimator_log
         bl = getfield(e, v)
         if bl == nothing
-            if isa(e.metadata["tracking"][string(v)], String)
+            if haskey(e.metadata["tracking"], string(v))
                 setfield!(e, v, load_exp_df(joinpath(e.path,e.metadata["tracking"][string(v)])))
+            elseif isfile(joinpath(e.path, "$(e.session_id)_log.hdf5"))
+                setfield!(e, v, load_exp_df(joinpath(e.path, "$(e.session_id)_log.hdf5")))
+            elseif isfile(joinpath(e.path, "$(e.session_id)_behavior_log.hdf5"))
+                setfield!(e, v, load_exp_df(joinpath(e.path, "$(e.session_id)_behavior_log.hdf5")))
+            else
+                throw(ArgumentError("This log does not exist"))
             end
         end
     elseif v == :stimulus_log
@@ -72,13 +78,18 @@ function Base.getproperty(e::Experiment, v::Symbol)
                     )
 
             else
-                filebase = joinpath(e.path, e.session_id * "_stimulus_log.")
-                if isfile(filebase*"h5")
-                    setfield!(e, v, load_exp_df(filebase*"h5"))
-                elseif isfile(filebase*"hdf5")
-                    setfield!(e, v, load_exp_df(filebase*"hdf5"))
+                for fileroot in ["stimulus_log", "dynamic_log", "stimulus_param_log"]
+                    filebase = joinpath(e.path, e.session_id * "_"*fileroot*".")
+                    if isfile(filebase*"h5")
+                        setfield!(e, v, load_exp_df(filebase*"h5"))
+                    elseif isfile(filebase*"hdf5")
+                        setfield!(e, v, load_exp_df(filebase*"hdf5"))
+                    end
                 end
             end
+        end
+        if getfield(e, v) === nothing
+            throw(ArgumentError("Stimulus log does not exist"))
         end
     end
     return getfield(e, v)

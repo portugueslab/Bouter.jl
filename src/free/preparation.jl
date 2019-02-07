@@ -68,9 +68,13 @@ function extract_bouts(
     max_interpolate=2,
     window_size=7,
     recalculate_vel=false,
-    scale=nothing, kwargs...)
+    scale=nothing, convert_to_missing=true, kwargs...)
 
     df = cexp.behavior_log
+
+    if convert_to_missing
+        NaN_to_missing!(df)
+    end
 
     scale = scale == nothing ? get_scale_mm(cexp) : scale
 

@@ -1,5 +1,6 @@
 using FileIO
 using Interpolations
+using DataFrames
 
 struct Movement
     x :: AbstractInterpolation
@@ -24,8 +25,8 @@ end
 
 function Movement(df::DataFrame)
     return Movement(
-        LinearInterpolation(df.t,df._x),
-        LinearInterpolation(df.t, df._y)
+        LinearInterpolation(df.t, df._x, extrapolation_bc=Flat()),
+        LinearInterpolation(df.t, df._y, extrapolation_bc=Flat())
     )
 end
 
@@ -97,8 +98,7 @@ end
 function get_position(bg::MovingBackground, t)
     x, y =  get_position(bg.movement, t)
     if bg.center_relative
-        bg.shifts :: Array{NTuple{2, Float64}, 1}
-        x, y = bg.shifts[_get_i_stim(bg, t)::Int64]::NTuple{2, Float64} .+ (x, -y)
+        x, y = bg.shifts[min(_get_i_stim(bg, t), length(bg.shifts))] .+ (x, -y)
     end
     return (x, y)
 end
@@ -107,12 +107,25 @@ function get_position_camera(bg::MovingBackground, t)
     return bg.proj_mat * [get_position(bg, t)... ; 1]
 end
 
-function motion_direction_velocity(bg:: MovingBackground, t; dt_vel=0.1)::Tuple{Union{Nothing, Float64}, Union{Nothing, Float64}}
+function motion_direction_velocity(bg:: MovingBackground, t; dt_vel=0.1)::Tuple{Union{Missing, Float64}, Union{Missing, Float64}}
     p0, p1 = map(ti->get_position_camera(bg, ti), [t-dt_vel, t+dt_vel])
     dp = (p0 .- p1)/dt_vel
     if all(dp .== 0)
-        return missing, missing
+        return missing, 0.0
     else
         return atan(dp[2], dp[1]), norm(dp)
+    end
+end
+
+function background_at_bouts!(bout_summary, bg::MovingBackground)
+    full_data = Dict(Symbol("bg_", prefix, "_", suffix) => Array{Union{Missing, Float64}}(undef, size(bout_summary, 1))
+                     for prefix in ["st", "en"] for suffix in ["theta", "v"])
+    for (i_bout, row) in enumerate(eachrow(bout_summary))
+        for (prefix, t) in zip(("st", "en"), (row.st_t, row.en_t))
+            full_data[Symbol("bg_", prefix, "_", "theta")][i_bout], full_data[Symbol("bg_", prefix, "_", "v")][i_bout] = motion_direction_velocity(bg, t)
+        end
+    end
+    for (sym, val) in full_data
+        bout_summary[sym] = val
     end
 end
