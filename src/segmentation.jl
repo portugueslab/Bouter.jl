@@ -14,13 +14,13 @@ function extract_segments_above_thresh(
 
     bouts = Tuple{UInt64, UInt64}[]
     connected = Bool[]
-        
+    
     in_bout = false
     continuity = false
     start = 0
     i = max(pad_before + 1, 2)
     bout_ended = pad_before
-    while i < size(vel)[end] - pad_after
+    while i < length(vel) - pad_after
         if ismissing(vel[i])
             continuity = false
             if in_bout && skip_missing
@@ -35,15 +35,12 @@ function extract_segments_above_thresh(
             in_bout = false
             if i - start > min_duration
                 push!(bouts, (start, i + pad_after))
+                push!(connected, continuity)
                 bout_ended = i + pad_after
-                if continuity
-                    push!(connected, true)
-                else
-                    push!(connected, false)
-                end
             end
+            continuity = true
         end
-        continuity = true
+        
         i += 1
     end
     return bouts, connected

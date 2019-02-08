@@ -70,11 +70,11 @@ function extract_bouts(
     recalculate_vel=false,
     scale=nothing, convert_to_missing=true, kwargs...)
 
-    df = cexp.behavior_log
-
     if convert_to_missing
-        NaN_to_missing!(df)
+        NaN_to_missing!(cexp.behavior_log)
     end
+
+    df = cexp.behavior_log
 
     scale = scale == nothing ? get_scale_mm(cexp) : scale
 
@@ -89,7 +89,6 @@ function extract_bouts(
                     diff(df[Symbol("f", string(i_fish), "_v", thing)])]
             end
         end
-    
         vel = interpolate_missing(
                 df[Symbol("f", i_fish, "_vx")] .^ 2 .+
                 df[Symbol("f", i_fish, "_vy")] .^ 2, max_interpolate)
