@@ -37,7 +37,7 @@ function Experiment(path::String)
         session_id = get(metadata["general"],
                        "session_id",
                         split(basename(path),'_')[1])
-        
+
     end
     return Experiment(dirname(path), metadata, fish_id, session_id, nothing, nothing, nothing, nothing)
 end
@@ -56,7 +56,7 @@ function Base.getproperty(e::Experiment, v::Symbol)
     if v == :behavior_log || v == :estimator_log
         bl = getfield(e, v)
         if bl == nothing
-            if haskey(e.metadata["tracking"], string(v))
+            if haskey(e.metadata["tracking"], string(v)) && isfile(joinpath(e.path,e.metadata["tracking"][string(v)]))
                 setfield!(e, v, load_exp_df(joinpath(e.path,e.metadata["tracking"][string(v)])))
             elseif isfile(joinpath(e.path, "$(e.session_id)_log.hdf5"))
                 setfield!(e, v, load_exp_df(joinpath(e.path, "$(e.session_id)_log.hdf5")))

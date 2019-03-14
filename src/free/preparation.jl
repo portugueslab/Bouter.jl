@@ -2,7 +2,7 @@ using Statistics
 using ImageFiltering
 using Printf
 
-function get_scale_mm(exp::Experiment)
+function get_camera_mm_px(exp::Experiment)
     cal_params = exp.metadata["stimulus"]["calibration_params"]
     proj_mat = vcat(transpose.(cal_params["cam_to_proj"])...)
     return norm(proj_mat[:, 1:2] * [1.0, 0.0]) * cal_params["mm_px"]
@@ -27,7 +27,7 @@ function _fish_column_names(i_fish, n_segments)
 end
 
 function _fish_renames(i_fish, n_segments)
-    dr = Dict(      
+    dr = Dict(
         ("f$(i_fish)_$(pfx)$(p)" => "$(pfx)$(p)" for p in ["x", "y","theta"] for pfx in ["","v"])...,
         (
             format("f{:d}_theta_{:02d}", i_fish, i)=> format("theta_{:02d}",i)
@@ -57,7 +57,7 @@ end
 function median_missing(a)
     if isempty(a)
        return missing
-   else 
+   else
        return median(a)
    end
 end
@@ -76,7 +76,7 @@ function extract_bouts(
 
     df = cexp.behavior_log
 
-    scale = scale == nothing ? get_scale_mm(cexp) : scale
+    scale = scale == nothing ? get_camera_mm_px(cexp) : scale
 
     n_fish = extract_n_fish(df)
     n_segments = extract_n_segments(df)
